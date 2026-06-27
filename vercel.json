@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "frontend/build",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/[...path].js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
