@@ -101,7 +101,7 @@ insert into evenements (nom, description, date_evenement, lieu, prix_ticket, qua
 values (
   'Bal Masque 2026 - Soiree des Mysteres',
   'La grande soiree de fin d''annee de l''universite. Venez masques et prets a danser !',
-  '2026-12-20 20:00:00+00',
+  '2026-08-13 20:00:00+00',
   'Grand Hall de Pigier CI',
   7000.00,
   300,

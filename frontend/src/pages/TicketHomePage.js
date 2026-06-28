@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import Footer from './Footer';
+import ChatBot from './ChatBot';
 
 const PARTICLE_COLORS = ['#c084fc', '#ec4899', '#7dd3fc', '#fcd34d', '#86efac'];
-const EVENT_DATE = new Date(2026, 5, 28);
+const EVENT_DATE = new Date(2026, 7, 13);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function getDaysRemaining() {
@@ -41,8 +43,32 @@ export default function TicketHomePage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const daysRemaining = getDaysRemaining();
   const eventDateLabel = getEventDateLabel();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Scroll vers les tarifs si redirigé depuis le footer
+  useEffect(() => {
+    if (searchParams.get('scroll') === 'tarifs') {
+      const el = document.getElementById('infos-bal');
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+        // Nettoyer le paramètre de l'URL
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, setSearchParams]);
+
+  const scrollToInfos = (e) => {
+    e.preventDefault();
+    const el = document.getElementById('infos-bal');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
+    <>
     <main className="home-hero">
       <div className="home-particles" aria-hidden="true">
         {particles.map((particle) => (
@@ -94,7 +120,7 @@ export default function TicketHomePage() {
         </p>
         <div className="home-cta-group">
           <Link className="home-cta-primary" to="/login">🎟️ Acheter mon ticket</Link>
-          <Link className="home-cta-secondary" to="#infos-bal">ℹ️ En savoir plus</Link>
+          <a className="home-cta-secondary" href="#infos-bal" onClick={scrollToInfos}>ℹ️ En savoir plus</a>
         </div>
       </section>
 
@@ -215,9 +241,10 @@ export default function TicketHomePage() {
         </article>
       </section>
 
-      <footer className="home-footer-bar">
-        © 2026 BalFest · Pigier CI · Tous droits réservés
-      </footer>
+      <footer className="home-footer-bar" aria-hidden="true" />
     </main>
+    <Footer />
+    <ChatBot />
+    </>
   );
 }

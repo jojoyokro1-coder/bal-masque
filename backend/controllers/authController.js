@@ -4,12 +4,26 @@ const db = require('../config/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'bal_masque_secret_2026';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Inscription client
 const register = async (req, res) => {
-  const { nom, prenom, email, password } = req.body;
+  let { nom, prenom, email, password } = req.body;
 
   if (!nom || !prenom || !email || !password) {
     return res.status(400).json({ message: 'Tous les champs sont requis.' });
+  }
+
+  nom = String(nom).trim();
+  prenom = String(prenom).trim();
+  email = String(email).trim().toLowerCase();
+
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ message: 'Format d\'adresse email invalide.' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères.' });
   }
 
   try {
@@ -40,10 +54,16 @@ const register = async (req, res) => {
 
 // Connexion
 const login = async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email et mot de passe requis.' });
+  }
+
+  email = String(email).trim().toLowerCase();
+
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ message: 'Format d\'adresse email invalide.' });
   }
 
   try {
@@ -75,3 +95,4 @@ const login = async (req, res) => {
 };
 
 module.exports = { register, login };
+

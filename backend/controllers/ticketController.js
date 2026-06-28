@@ -12,7 +12,11 @@ const {
 const DELAI_COMMANDE_MS = 2 * 60 * 1000; // 2 minutes
 const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
-const getPaymentLink = (ticketType) => {
+const getPaymentLink = (ticketType, prixUnitaire) => {
+  if (Number(prixUnitaire) === 5000) {
+    if (process.env.PAYMENT_LINK_EARLY_BIRD) return process.env.PAYMENT_LINK_EARLY_BIRD;
+    if (process.env.PAYMENT_LINK_5000) return process.env.PAYMENT_LINK_5000;
+  }
   const key = `PAYMENT_LINK_${String(ticketType || '').toUpperCase()}`;
   return process.env[key] || process.env.PAYMENT_LINK_DEFAULT || '';
 };
@@ -114,7 +118,7 @@ const acheterTickets = async (req, res) => {
       : null;
     const prix_unitaire = promotionQuote?.tickets[0]?.prix_unitaire ?? categorie.prix;
     const montant_total = promotionQuote?.total ?? prix_unitaire * quantite;
-    const payment_url = getPaymentLink(ticket_type);
+    const payment_url = getPaymentLink(ticket_type, prix_unitaire);
 
     if (!payment_url) {
       return res.status(500).json({

@@ -83,7 +83,7 @@ export default function Login() {
       toast.success(`Bienvenue, ${user.prenom || user.nom || 'invité'} !`);
       window.history.replaceState({}, '', '/login');
 
-      if (user.role === 'admin') navigate('/admin', { replace: true });
+      if (user.role === 'admin' || user.role === 'sous_admin') navigate('/admin', { replace: true });
       else if (user.role === 'inspecteur') navigate('/inspecteur', { replace: true });
       else navigate('/client', { replace: true });
     } catch (err) {
@@ -100,7 +100,7 @@ export default function Login() {
       login(res.data.user, res.data.token);
       toast.success(`Bienvenue, ${res.data.user.prenom} !`);
       const role = res.data.user.role;
-      if (role === 'admin') navigate('/admin');
+      if (role === 'admin' || role === 'sous_admin') navigate('/admin');
       else if (role === 'inspecteur') navigate('/inspecteur');
       else navigate('/client');
     } catch (err) {
@@ -112,6 +112,10 @@ export default function Login() {
 
   return (
     <div className="register-page login-page">
+      <Link to="/" className="back-home-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Retour
+      </Link>
       <div className="register-stage-light register-stage-light-violet register-stage-light-one" />
       <div className="register-stage-light register-stage-light-gold register-stage-light-two" />
       <div className="register-stage-light register-stage-light-violet register-stage-light-three" />

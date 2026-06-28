@@ -12,7 +12,7 @@ CREATE TABLE users (
   prenom VARCHAR(100) NOT NULL,
   email VARCHAR(150) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
-  role ENUM('admin', 'client', 'inspecteur') NOT NULL DEFAULT 'client',
+  role ENUM('admin', 'sous_admin', 'client', 'inspecteur') NOT NULL DEFAULT 'client',
   created_by INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -89,7 +89,7 @@ INSERT INTO evenements (nom, description, date_evenement, lieu, prix_ticket, qua
 VALUES (
   'Bal Masqué 2026 - Soirée des Mystères',
   'La grande soirée de fin d''année de l''université. Venez masqués et prêts à danser !',
-  '2026-12-20 20:00:00',
+  '2026-08-13 20:00:00',
   'Grand Hall de Pigier CI',
   7000.00,
   300,

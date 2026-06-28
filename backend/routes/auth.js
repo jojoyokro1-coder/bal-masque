@@ -3,9 +3,20 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const FacebookStrategy = require('passport-facebook').Strategy;
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const db = require('../config/db');
 const router = express.Router();
 const { register, login } = require('../controllers/authController');
+
+// Rate limiter strict pour la connexion et l'inscription (max 10 tentatives par 15 minutes)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Trop de tentatives de connexion ou de création de compte. Veuillez réanalyser ou attendre 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 
 const JWT_SECRET = process.env.JWT_SECRET || 'bal_masque_secret_2026';
 const isProduction = process.env.NODE_ENV === 'production';
@@ -92,8 +103,8 @@ if (facebookConfigured) {
   }, (accessToken, refreshToken, profile, done) => done(null, profile)));
 }
 
-router.post('/register', register);
-router.post('/login', login);
+router.post('/register', authLimiter, register);
+router.post('/login', authLimiter, login);
 
 router.get('/google',
   requireOAuthConfig('Google', googleConfigured),

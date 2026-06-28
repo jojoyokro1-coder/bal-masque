@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -8,6 +8,7 @@ import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import ClientDashboard from './pages/ClientDashboard';
 import InspecteurDashboard from './pages/InspecteurDashboard';
+import LoadingScreen from './pages/LoadingScreen';
 import './App.css';
 
 function PrivateRoute({ children, roles }) {
@@ -37,6 +38,19 @@ function LoginRedirect() {
 }
 
 function App() {
+  const [showLoader, setShowLoader] = useState(() => !sessionStorage.getItem('hasSeenLoader'));
+
+  if (showLoader) {
+    return (
+      <LoadingScreen 
+        onComplete={() => {
+          sessionStorage.setItem('hasSeenLoader', 'true');
+          setShowLoader(false);
+        }} 
+      />
+    );
+  }
+
   return (
     <AuthProvider>
       <BrowserRouter>

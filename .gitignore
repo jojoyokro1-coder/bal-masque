@@ -11,3 +11,4 @@ frontend/build/
 !frontend/.env.production
 
 .vercel
+.claude/

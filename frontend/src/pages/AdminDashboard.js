@@ -10,6 +10,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [inspecteurs, setInspecteurs] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [clients, setClients] = useState([]);
   const [sousAdmins, setSousAdmins] = useState([]);
   const [onglet, setOnglet] = useState('stats');
   const [formInspecteur, setFormInspecteur] = useState({ nom: '', prenom: '', email: '', password: '' });
@@ -18,10 +19,17 @@ export default function AdminDashboard() {
   const [loadingSousAdmin, setLoadingSousAdmin] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
+  // Modal réinitialisation MDP
+  const [resetModal, setResetModal] = useState({ open: false, clientId: null, clientEmail: '' });
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetShowPassword, setResetShowPassword] = useState(false);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+
   useEffect(() => {
     chargerStats();
     chargerInspecteurs();
     chargerTickets();
+    chargerClients();
     if (isAdminPrincipal) chargerSousAdmins();
   }, [isAdminPrincipal]);
 
@@ -43,6 +51,13 @@ export default function AdminDashboard() {
     try {
       const res = await api.get('/admin/tickets');
       setTickets(res.data);
+    } catch (err) { }
+  };
+
+  const chargerClients = async () => {
+    try {
+      const res = await api.get('/admin/clients');
+      setClients(res.data);
     } catch (err) { }
   };
 
@@ -97,6 +112,34 @@ export default function AdminDashboard() {
     } catch (err) { toast.error('Erreur suppression'); }
   };
 
+  const openResetModal = (clientId, clientEmail) => {
+    setResetModal({ open: true, clientId, clientEmail });
+    setResetNewPassword('');
+    setResetShowPassword(false);
+  };
+
+  const closeResetModal = () => {
+    setResetModal({ open: false, clientId: null, clientEmail: '' });
+    setResetNewPassword('');
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetNewPassword || resetNewPassword.length < 6) {
+      toast.error('Le mot de passe doit faire au moins 6 caractères.');
+      return;
+    }
+    setResetSubmitting(true);
+    try {
+      await api.put(`/admin/clients/${resetModal.clientId}/reset-password`, { newPassword: resetNewPassword });
+      toast.success('Mot de passe réinitialisé avec succès !');
+      closeResetModal();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur lors de la réinitialisation');
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
+
   const reinitialiserCompteurs = async () => {
     const confirme = window.confirm(
       'Remettre tous les compteurs a zero ? Cette action supprime les tickets, commandes et comptes clients.'
@@ -116,6 +159,7 @@ export default function AdminDashboard() {
   };
 
   return (
+    <>
     <div className="dashboard">
       <nav className="navbar">
         <span className="navbar-brand">
@@ -132,6 +176,7 @@ export default function AdminDashboard() {
         <button className={onglet === 'stats' ? 'tab active' : 'tab'} onClick={() => setOnglet('stats')}>📊 Tableau de bord</button>
         <button className={onglet === 'inspecteurs' ? 'tab active' : 'tab'} onClick={() => setOnglet('inspecteurs')}>👮 Inspecteurs</button>
         <button className={onglet === 'tickets' ? 'tab active' : 'tab'} onClick={() => setOnglet('tickets')}>🎫 Tickets</button>
+        <button className={onglet === 'clients' ? 'tab active' : 'tab'} onClick={() => setOnglet('clients')}>👥 Clients</button>
         {isAdminPrincipal && (
           <button className={onglet === 'sous-admins' ? 'tab active' : 'tab'} onClick={() => setOnglet('sous-admins')}>🛡️ Sous-Admins</button>
         )}
@@ -143,14 +188,16 @@ export default function AdminDashboard() {
           <div>
             <div className="section-header-actions">
               <h2>Vue d'ensemble</h2>
-              <button
-                type="button"
-                className="btn-danger"
-                onClick={reinitialiserCompteurs}
-                disabled={resetLoading}
-              >
-                {resetLoading ? 'Reinitialisation...' : 'Remettre a zero'}
-              </button>
+              {isAdminPrincipal && (
+                <button
+                  type="button"
+                  className="btn-danger"
+                  onClick={reinitialiserCompteurs}
+                  disabled={resetLoading}
+                >
+                  {resetLoading ? 'Reinitialisation...' : 'Remettre a zero'}
+                </button>
+              )}
             </div>
             <div className="stats-grid">
               <div className="stat-card purple">
@@ -173,14 +220,21 @@ export default function AdminDashboard() {
                 <div className="stat-number">{stats.totalClients}</div>
                 <div className="stat-label">Clients inscrits</div>
               </div>
+              <div className="stat-card orange">
+                <div className="stat-number">{stats.ticketsSolo ?? 0}</div>
+                <div className="stat-label">🧍 Tickets Solo</div>
+              </div>
+              <div className="stat-card teal">
+                <div className="stat-number">{stats.ticketsCouple ?? 0}</div>
+                <div className="stat-label">👫 Tickets Couple</div>
+              </div>
             </div>
             {stats.evenement && (
               <div className="event-info-card">
                 <h3>🎭 {stats.evenement.nom}</h3>
                 <p>📅 {new Date(stats.evenement.date_evenement).toLocaleString('fr-FR')}</p>
                 <p>📍 {stats.evenement.lieu}</p>
-                <p>💰 {stats.evenement.prix_ticket} FCFA / ticket</p>
-                <p>🎫 {stats.evenement.quantite_disponible} places restantes</p>
+                <p>💰 Solo : {stats.evenement.prix_ticket} FCFA &nbsp;|&nbsp; Couple : {(stats.evenement.prix_ticket_couple || (stats.evenement.prix_ticket * 2))} FCFA</p>
               </div>
             )}
           </div>
@@ -351,7 +405,100 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-      </div>
+
+        {/* Onglet Clients — visible pour admin et sous-admin */}
+        {onglet === 'clients' && (
+          <div>
+            <div className="section-header-actions">
+              <h2>Liste des clients inscrits</h2>
+            </div>
+            <div className="card full-width">
+              <h3>Clients ({clients.length})</h3>
+              {clients.length === 0 ? (
+                <p className="empty-state">Aucun client trouvé.</p>
+              ) : (
+                <div className="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nom Complet</th>
+                        <th>Email</th>
+                        <th>Date d'inscription</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clients.map(c => (
+                        <tr key={c.id}>
+                          <td>{c.prenom} {c.nom}</td>
+                          <td><strong>{c.email}</strong></td>
+                          <td>{new Date(c.created_at).toLocaleString()}</td>
+                          <td>
+                            <button 
+                              className="btn-primary-sm" 
+                              onClick={() => openResetModal(c.id, c.email)}
+                            >
+                              🔑 Réinitialiser MDP
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                 </div>
+               )}
+             </div>
+           </div>
+         )}
+       </div>
     </div>
+
+    {/* ── Modal réinitialisation mot de passe ── */}
+    {resetModal.open && (
+      <div className="reset-modal-overlay" onClick={closeResetModal}>
+        <div className="reset-modal" onClick={e => e.stopPropagation()}>
+          <div className="reset-modal-header">
+            <span className="reset-modal-icon">🔑</span>
+            <h3>Réinitialiser le mot de passe</h3>
+            <button className="reset-modal-close" onClick={closeResetModal}>✕</button>
+          </div>
+          <p className="reset-modal-email">{resetModal.clientEmail}</p>
+          <div className="reset-modal-field">
+            <label>Nouveau mot de passe</label>
+            <div className="reset-modal-input-wrap">
+              <input
+                type={resetShowPassword ? 'text' : 'password'}
+                placeholder="Min. 6 caractères"
+                value={resetNewPassword}
+                onChange={e => setResetNewPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+                autoFocus
+              />
+              <button
+                className="reset-modal-toggle"
+                type="button"
+                onClick={() => setResetShowPassword(v => !v)}
+              >
+                {resetShowPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
+            {resetNewPassword.length > 0 && resetNewPassword.length < 6 && (
+              <span className="reset-modal-hint">Encore {6 - resetNewPassword.length} caractère(s)</span>
+            )}
+          </div>
+          <div className="reset-modal-actions">
+            <button className="btn-secondary" onClick={closeResetModal} disabled={resetSubmitting}>Annuler</button>
+            <button
+              className="btn-primary-sm reset-modal-confirm"
+              onClick={handleResetPassword}
+              disabled={resetSubmitting || resetNewPassword.length < 6}
+            >
+              {resetSubmitting ? 'Enregistrement…' : '✓ Confirmer'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

@@ -60,18 +60,25 @@ const statistiques = async (req, res) => {
     const [[{ totalClients }]] = await db.query("SELECT COUNT(*)::int as \"totalClients\" FROM users WHERE role = 'client'");
     const [evenement] = await db.query('SELECT * FROM evenements WHERE actif = true LIMIT 1');
 
+    // Tickets par catégorie
+    const [[{ ticketsSolo }]] = await db.query("SELECT COUNT(*)::int as \"ticketsSolo\" FROM tickets WHERE ticket_type = 'solo'");
+    const [[{ ticketsCouple }]] = await db.query("SELECT COUNT(*)::int as \"ticketsCouple\" FROM tickets WHERE ticket_type = 'couple'");
+
     res.json({
       totalTickets,
       ticketsScanned,
       ticketsActifs: totalTickets - ticketsScanned,
       totalVentes,
       totalClients,
+      ticketsSolo,
+      ticketsCouple,
       evenement: evenement[0] || null
     });
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
 };
+
 
 // Remettre les compteurs du tableau de bord a zero
 const reinitialiserCompteurs = async (req, res) => {
@@ -189,4 +196,38 @@ const supprimerSousAdmin = async (req, res) => {
   }
 };
 
-module.exports = { creerInspecteur, listeInspecteurs, supprimerInspecteur, statistiques, reinitialiserCompteurs, tousLesTickets, mettreAJourEvenement, obtenirEvenement, creerSousAdmin, listeSousAdmins, supprimerSousAdmin };
+// Liste de tous les clients
+const listeClients = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT id, nom, prenom, email, created_at FROM users WHERE role = 'client' ORDER BY created_at DESC"
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+// Réinitialiser le mot de passe d'un client
+const reinitialiserMotDePasseClient = async (req, res) => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères.' });
+  }
+
+  try {
+    const hashed = await bcrypt.hash(newPassword, 10);
+    const [result] = await db.query(
+      "UPDATE users SET password = ? WHERE id = ? AND role = 'client'",
+      [hashed, id]
+    );
+    res.json({ message: 'Mot de passe réinitialisé avec succès.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+module.exports = { creerInspecteur, listeInspecteurs, supprimerInspecteur, statistiques, reinitialiserCompteurs, tousLesTickets, mettreAJourEvenement, obtenirEvenement, creerSousAdmin, listeSousAdmins, supprimerSousAdmin, listeClients, reinitialiserMotDePasseClient };

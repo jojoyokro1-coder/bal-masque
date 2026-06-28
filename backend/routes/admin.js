@@ -4,7 +4,7 @@ const { authMiddleware, roleMiddleware } = require('../middleware/auth');
 const {
   creerInspecteur, listeInspecteurs, supprimerInspecteur,
   statistiques, reinitialiserCompteurs, tousLesTickets, mettreAJourEvenement, obtenirEvenement,
-  creerSousAdmin, listeSousAdmins, supprimerSousAdmin
+  creerSousAdmin, listeSousAdmins, supprimerSousAdmin, listeClients, reinitialiserMotDePasseClient
 } = require('../controllers/adminController');
 
 // Routes accessibles à admin ET sous_admin
@@ -15,6 +15,8 @@ router.post('/reinitialiser-compteurs', reinitialiserCompteurs);
 router.get('/tickets', tousLesTickets);
 router.get('/evenement', obtenirEvenement);
 router.put('/evenement', mettreAJourEvenement);
+router.get('/clients', listeClients);
+router.put('/clients/:id/reset-password', reinitialiserMotDePasseClient);
 
 // Inspecteurs : lecture accessible aux deux rôles, écriture réservée à l'admin
 router.get('/inspecteurs', listeInspecteurs);
