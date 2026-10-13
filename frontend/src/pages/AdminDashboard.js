@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import VotesPanel from './VotesPanel';
+import { EVENT_FULL_LABEL, EVENT_LOCATION } from '../utils/eventInfo';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -10,6 +12,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [inspecteurs, setInspecteurs] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [commandes, setCommandes] = useState([]);
   const [clients, setClients] = useState([]);
   const [sousAdmins, setSousAdmins] = useState([]);
   const [onglet, setOnglet] = useState('stats');
@@ -18,6 +21,12 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [loadingSousAdmin, setLoadingSousAdmin] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [clientAuthDisabled, setClientAuthDisabled] = useState(false);
+  const [clientAuthLoading, setClientAuthLoading] = useState(false);
+  const [paymentsDisabled, setPaymentsDisabled] = useState(false);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [voteTabVisible, setVoteTabVisible] = useState(true);
+  const [voteTabLoading, setVoteTabLoading] = useState(false);
 
   // Modal réinitialisation MDP
   const [resetModal, setResetModal] = useState({ open: false, clientId: null, clientEmail: '' });
@@ -29,8 +38,14 @@ export default function AdminDashboard() {
     chargerStats();
     chargerInspecteurs();
     chargerTickets();
+    chargerCommandes();
     chargerClients();
-    if (isAdminPrincipal) chargerSousAdmins();
+    if (isAdminPrincipal) {
+      chargerSousAdmins();
+      chargerStatutAuthClients();
+      chargerStatutPaiements();
+      chargerStatutOngletVote();
+    }
   }, [isAdminPrincipal]);
 
   const chargerStats = async () => {
@@ -54,6 +69,13 @@ export default function AdminDashboard() {
     } catch (err) { }
   };
 
+  const chargerCommandes = async () => {
+    try {
+      const res = await api.get('/admin/commandes');
+      setCommandes(res.data);
+    } catch (err) { }
+  };
+
   const chargerClients = async () => {
     try {
       const res = await api.get('/admin/clients');
@@ -66,6 +88,84 @@ export default function AdminDashboard() {
       const res = await api.get('/admin/sous-admins');
       setSousAdmins(res.data);
     } catch (err) { }
+  };
+
+  const chargerStatutAuthClients = async () => {
+    try {
+      const res = await api.get('/admin/client-auth-status');
+      setClientAuthDisabled(Boolean(res.data.disabled));
+    } catch (err) { }
+  };
+
+  const basculerAuthClients = async () => {
+    const prochainStatut = !clientAuthDisabled;
+    const confirme = window.confirm(
+      prochainStatut
+        ? 'Bloquer les inscriptions et connexions des clients ? Les admins pourront toujours se connecter.'
+        : 'Debloquer les inscriptions et connexions des clients ?'
+    );
+    if (!confirme) return;
+
+    setClientAuthLoading(true);
+    try {
+      const res = await api.put('/admin/client-auth-status', { disabled: prochainStatut });
+      setClientAuthDisabled(Boolean(res.data.disabled));
+      toast.success(res.data.message || 'Statut client mis a jour.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur mise a jour du statut client');
+    } finally {
+      setClientAuthLoading(false);
+    }
+  };
+
+  const chargerStatutPaiements = async () => {
+    try {
+      const res = await api.get('/admin/payments-status');
+      setPaymentsDisabled(Boolean(res.data.disabled));
+    } catch (err) { }
+  };
+
+  const basculerPaiements = async () => {
+    const prochainStatut = !paymentsDisabled;
+    const confirme = window.confirm(
+      prochainStatut
+        ? 'Bloquer temporairement tous les paiements sur le site ?'
+        : 'Debloquer les paiements ?'
+    );
+    if (!confirme) return;
+
+    setPaymentsLoading(true);
+    try {
+      const res = await api.put('/admin/payments-status', { disabled: prochainStatut });
+      setPaymentsDisabled(Boolean(res.data.disabled));
+      toast.success(res.data.message || 'Statut des paiements mis a jour.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur mise a jour du statut des paiements');
+    } finally {
+      setPaymentsLoading(false);
+    }
+  };
+
+  const chargerStatutOngletVote = async () => {
+    try {
+      const res = await api.get('/admin/vote-tab-status');
+      setVoteTabVisible(Boolean(res.data.visible));
+    } catch (err) { }
+  };
+
+  const basculerOngletVote = async () => {
+    const prochainStatut = !voteTabVisible;
+
+    setVoteTabLoading(true);
+    try {
+      const res = await api.put('/admin/vote-tab-status', { visible: prochainStatut });
+      setVoteTabVisible(Boolean(res.data.visible));
+      toast.success(res.data.message || 'Statut de l onglet Vote mis a jour.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur mise a jour de l onglet Vote');
+    } finally {
+      setVoteTabLoading(false);
+    }
   };
 
   const creerInspecteur = async (e) => {
@@ -90,6 +190,17 @@ export default function AdminDashboard() {
     } catch (err) { toast.error('Erreur suppression'); }
   };
 
+  const validerCommande = async (id) => {
+    if (!window.confirm('Valider ce paiement et generer les tickets ?')) return;
+
+    try {
+      const res = await api.post(`/admin/commandes/${id}/valider-paiement`);
+      toast.success(res.data.message || 'Paiement valide.');
+      await Promise.all([chargerStats(), chargerTickets(), chargerCommandes()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur validation paiement');
+    }
+  };
   const creerSousAdmin = async (e) => {
     e.preventDefault();
     setLoadingSousAdmin(true);
@@ -176,7 +287,9 @@ export default function AdminDashboard() {
         <button className={onglet === 'stats' ? 'tab active' : 'tab'} onClick={() => setOnglet('stats')}>📊 Tableau de bord</button>
         <button className={onglet === 'inspecteurs' ? 'tab active' : 'tab'} onClick={() => setOnglet('inspecteurs')}>👮 Inspecteurs</button>
         <button className={onglet === 'tickets' ? 'tab active' : 'tab'} onClick={() => setOnglet('tickets')}>🎫 Tickets</button>
+        <button className={onglet === 'commandes' ? 'tab active' : 'tab'} onClick={() => setOnglet('commandes')}>Commandes</button>
         <button className={onglet === 'clients' ? 'tab active' : 'tab'} onClick={() => setOnglet('clients')}>👥 Clients</button>
+        <button className={onglet === 'votes' ? 'tab active' : 'tab'} onClick={() => setOnglet('votes')}>Votes</button>
         {isAdminPrincipal && (
           <button className={onglet === 'sous-admins' ? 'tab active' : 'tab'} onClick={() => setOnglet('sous-admins')}>🛡️ Sous-Admins</button>
         )}
@@ -189,16 +302,74 @@ export default function AdminDashboard() {
             <div className="section-header-actions">
               <h2>Vue d'ensemble</h2>
               {isAdminPrincipal && (
-                <button
-                  type="button"
-                  className="btn-danger"
-                  onClick={reinitialiserCompteurs}
-                  disabled={resetLoading}
-                >
-                  {resetLoading ? 'Reinitialisation...' : 'Remettre a zero'}
-                </button>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className={clientAuthDisabled ? 'btn-success' : 'btn-warning'}
+                    onClick={basculerAuthClients}
+                    disabled={clientAuthLoading}
+                  >
+                    {clientAuthLoading
+                      ? 'Mise a jour...'
+                      : clientAuthDisabled
+                        ? 'Debloquer clients'
+                        : 'Bloquer clients'}
+                  </button>
+                  <button
+                    type="button"
+                    className={paymentsDisabled ? 'btn-success' : 'btn-warning'}
+                    onClick={basculerPaiements}
+                    disabled={paymentsLoading}
+                  >
+                    {paymentsLoading
+                      ? 'Mise a jour...'
+                      : paymentsDisabled
+                        ? 'Debloquer paiements'
+                        : 'Bloquer paiements'}
+                  </button>
+                  <label className="admin-toggle-row">
+                    <span>Afficher l'onglet Vote aux clients</span>
+                    <button
+                      type="button"
+                      className={voteTabVisible ? 'admin-switch on' : 'admin-switch'}
+                      onClick={basculerOngletVote}
+                      disabled={voteTabLoading}
+                      role="switch"
+                      aria-checked={voteTabVisible}
+                    >
+                      <span />
+                    </button>
+                  </label>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={reinitialiserCompteurs}
+                    disabled={resetLoading}
+                  >
+                    {resetLoading ? 'Reinitialisation...' : 'Remettre a zero'}
+                  </button>
+                </div>
               )}
             </div>
+            {isAdminPrincipal && (
+              <>
+                <div className={clientAuthDisabled ? 'client-auth-banner blocked' : 'client-auth-banner open'}>
+                  {clientAuthDisabled
+                    ? 'Les clients ne peuvent pas creer de compte ni se connecter.'
+                    : 'Les clients peuvent creer un compte et se connecter.'}
+                </div>
+                <div className={paymentsDisabled ? 'client-auth-banner blocked' : 'client-auth-banner open'} style={{ marginTop: '10px' }}>
+                  {paymentsDisabled
+                    ? 'Les paiements sont actuellement bloques sur tout le site.'
+                    : 'Les paiements sont actifs et fonctionnels.'}
+                </div>
+                <div className={voteTabVisible ? 'client-auth-banner open' : 'client-auth-banner blocked'} style={{ marginTop: '10px' }}>
+                  {voteTabVisible
+                    ? 'L onglet Vote est visible pour les clients.'
+                    : 'L onglet Vote est masque pour les clients.'}
+                </div>
+              </>
+            )}
             <div className="stats-grid">
               <div className="stat-card purple">
                 <div className="stat-number">{stats.totalTickets}</div>
@@ -232,9 +403,9 @@ export default function AdminDashboard() {
             {stats.evenement && (
               <div className="event-info-card">
                 <h3>🎭 {stats.evenement.nom}</h3>
-                <p>📅 {new Date(stats.evenement.date_evenement).toLocaleString('fr-FR')}</p>
-                <p>📍 {stats.evenement.lieu}</p>
-                <p>💰 Solo : {stats.evenement.prix_ticket} FCFA &nbsp;|&nbsp; Couple : {(stats.evenement.prix_ticket_couple || (stats.evenement.prix_ticket * 2))} FCFA</p>
+                <p>📅 {EVENT_FULL_LABEL}</p>
+                <p>📍 {EVENT_LOCATION}</p>
+                <p>💰 Solo : 7000 FCFA &nbsp;|&nbsp; Couple : 12000 FCFA</p>
               </div>
             )}
           </div>
@@ -341,6 +512,49 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {onglet === 'commandes' && (
+          <div>
+            <h2>Commandes ({commandes.length})</h2>
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Client</th><th>Email</th><th>Categorie</th><th>Quantite</th><th>Montant</th><th>Statut</th><th>Tickets</th><th>Date</th>{isAdminPrincipal && <th>Action</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {commandes.map(c => (
+                    <tr key={c.id}>
+                      <td>{c.prenom} {c.nom}</td>
+                      <td>{c.email}</td>
+                      <td>{c.ticket_type === 'couple' ? 'Couple' : 'Solo'}</td>
+                      <td>{c.quantite}</td>
+                      <td>{Number(c.montant_total || 0).toLocaleString()} FCFA</td>
+                      <td>
+                        <span className={`badge ${c.statut === 'payee' ? 'badge-active' : 'badge-cancelled'}`}>
+                          {c.statut}
+                        </span>
+                      </td>
+                      <td>{c.tickets_generes}</td>
+                      <td>{new Date(c.created_at).toLocaleString('fr-FR')}</td>
+                      {isAdminPrincipal && (
+                        <td>
+                          {c.statut !== 'payee' || Number(c.tickets_generes || 0) === 0 ? (
+                            <button className="btn-primary-sm" onClick={() => validerCommande(c.id)}>
+                              Valider paiement
+                            </button>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
         {/* Onglet Sous-Admins — visible uniquement pour l'admin principal */}
         {onglet === 'sous-admins' && isAdminPrincipal && (
           <div>
@@ -424,7 +638,7 @@ export default function AdminDashboard() {
                         <th>Nom Complet</th>
                         <th>Email</th>
                         <th>Date d'inscription</th>
-                        <th>Actions</th>
+                        {isAdminPrincipal && <th>Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -433,14 +647,16 @@ export default function AdminDashboard() {
                           <td>{c.prenom} {c.nom}</td>
                           <td><strong>{c.email}</strong></td>
                           <td>{new Date(c.created_at).toLocaleString()}</td>
-                          <td>
-                            <button 
-                              className="btn-primary-sm" 
-                              onClick={() => openResetModal(c.id, c.email)}
-                            >
-                              🔑 Réinitialiser MDP
-                            </button>
-                          </td>
+                          {isAdminPrincipal && (
+                            <td>
+                              <button 
+                                className="btn-primary-sm" 
+                                onClick={() => openResetModal(c.id, c.email)}
+                              >
+                                🔑 Réinitialiser MDP
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -450,6 +666,8 @@ export default function AdminDashboard() {
              </div>
            </div>
          )}
+
+        {onglet === 'votes' && <VotesPanel mode="admin" />}
        </div>
     </div>
 

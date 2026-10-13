@@ -2,7 +2,7 @@ const SOLO_ORIGINAL_PRICE = 7000;
 const FREE_BUYER_RANK = 1;
 const EARLY_BIRD_START_RANK = 2;
 const EARLY_BIRD_END_RANK = 5;
-const EARLY_BIRD_PRICE = 5000;
+const EARLY_BIRD_PRICE = 7000;
 
 const PROMO_BADGES = {
   free: '🎉 Ticket Offert · Premier acheteur',

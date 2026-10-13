@@ -3,8 +3,11 @@ const router = express.Router();
 const { authMiddleware, roleMiddleware } = require('../middleware/auth');
 const {
   creerInspecteur, listeInspecteurs, supprimerInspecteur,
-  statistiques, reinitialiserCompteurs, tousLesTickets, mettreAJourEvenement, obtenirEvenement,
-  creerSousAdmin, listeSousAdmins, supprimerSousAdmin, listeClients, reinitialiserMotDePasseClient
+  statistiques, reinitialiserCompteurs, tousLesTickets, toutesLesCommandes, validerCommandePayee, mettreAJourEvenement, obtenirEvenement,
+  creerSousAdmin, listeSousAdmins, supprimerSousAdmin, listeClients, reinitialiserMotDePasseClient,
+  obtenirStatutAuthClients, mettreAJourStatutAuthClients,
+  obtenirStatutPaiements, mettreAJourStatutPaiements,
+  obtenirStatutOngletVote, mettreAJourStatutOngletVote
 } = require('../controllers/adminController');
 
 // Routes accessibles à admin ET sous_admin
@@ -13,10 +16,24 @@ router.use(authMiddleware, roleMiddleware('admin', 'sous_admin'));
 router.get('/statistiques', statistiques);
 router.post('/reinitialiser-compteurs', reinitialiserCompteurs);
 router.get('/tickets', tousLesTickets);
+router.get('/commandes', toutesLesCommandes);
+router.post('/commandes/:id/valider-paiement', roleMiddleware('admin'), validerCommandePayee);
 router.get('/evenement', obtenirEvenement);
 router.put('/evenement', mettreAJourEvenement);
 router.get('/clients', listeClients);
-router.put('/clients/:id/reset-password', reinitialiserMotDePasseClient);
+router.put('/clients/:id/reset-password', roleMiddleware('admin'), reinitialiserMotDePasseClient);
+
+// Blocage/deblocage des inscriptions et connexions client : admin principal uniquement
+router.get('/client-auth-status', roleMiddleware('admin'), obtenirStatutAuthClients);
+router.put('/client-auth-status', roleMiddleware('admin'), mettreAJourStatutAuthClients);
+
+// Blocage/deblocage des paiements : admin principal uniquement
+router.get('/payments-status', roleMiddleware('admin'), obtenirStatutPaiements);
+router.put('/payments-status', roleMiddleware('admin'), mettreAJourStatutPaiements);
+
+// Affichage/masquage de l'onglet Vote cote client : admin principal uniquement
+router.get('/vote-tab-status', roleMiddleware('admin'), obtenirStatutOngletVote);
+router.put('/vote-tab-status', roleMiddleware('admin'), mettreAJourStatutOngletVote);
 
 // Inspecteurs : lecture accessible aux deux rôles, écriture réservée à l'admin
 router.get('/inspecteurs', listeInspecteurs);

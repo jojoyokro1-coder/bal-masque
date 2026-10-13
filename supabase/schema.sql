@@ -71,6 +71,38 @@ create table tickets (
   created_at timestamp with time zone default now()
 );
 
+create table app_settings (
+  key varchar(100) primary key,
+  value text not null,
+  updated_at timestamp with time zone default now()
+);
+
+insert into app_settings (key, value)
+values ('vote_tab_visible', 'true')
+on conflict (key) do nothing;
+
+create table vote_couples (
+  id serial primary key,
+  roi_name varchar(150) not null,
+  reine_name varchar(150) not null,
+  roi_photo text,
+  reine_photo text,
+  description text,
+  active boolean not null default true,
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+
+create table votes (
+  id serial primary key,
+  client_id integer not null references users(id) on delete cascade,
+  category varchar(80) not null,
+  candidate varchar(150) not null,
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now(),
+  unique (client_id, category)
+);
+
 create trigger users_set_updated_at
 before update on users
 for each row execute function set_updated_at();
@@ -83,13 +115,17 @@ create trigger commandes_set_updated_at
 before update on commandes
 for each row execute function set_updated_at();
 
+create trigger vote_couples_set_updated_at
+before update on vote_couples
+for each row execute function set_updated_at();
+
 create index idx_tickets_code on tickets(code_unique);
 create index idx_tickets_client on tickets(client_id);
 create index idx_commandes_client on commandes(client_id);
 create index idx_commandes_statut on commandes(statut);
 
 insert into users (nom, prenom, email, password, role)
-values ('Admin', 'Systeme', 'admin@balmasque.ci', '$2a$10$sHU//wtLW5O1KGhNLdUYL.DB93qYFs31XxdB1YyOCGg/RxDn4M65u', 'admin')
+values ('Admin', 'Systeme', 'admin@balmasque.ci', '$2a$10$/27JdxWzY.OGd9XXUDH6pety2i0STGUzjFHai0ZqN2Sfqb.lCfJBa', 'admin')
 on conflict (email) do update set
   nom = excluded.nom,
   prenom = excluded.prenom,
@@ -101,8 +137,8 @@ insert into evenements (nom, description, date_evenement, lieu, prix_ticket, qua
 values (
   'Bal Masque 2026 - Soiree des Mysteres',
   'La grande soiree de fin d''annee de l''universite. Venez masques et prets a danser !',
-  '2026-08-13 20:00:00+00',
-  'Grand Hall de Pigier CI',
+  '2026-09-04 19:00:00+00',
+  'Espace Le Villier, Yopougon Chambéry',
   7000.00,
   300,
   300

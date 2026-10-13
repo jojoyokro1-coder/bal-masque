@@ -12,14 +12,16 @@ async function main() {
     console.log('Connexion réussie !');
     
     // Voir les événements actuels
-    const before = await client.query('SELECT id, nom, date_evenement FROM evenements');
+    const before = await client.query('SELECT id, nom, date_evenement, lieu FROM evenements');
     console.log('Avant mise à jour:', before.rows);
     
-    // Mettre à jour la date
-    await client.query("UPDATE evenements SET date_evenement = '2026-08-13 20:00:00' WHERE TRUE");
+    // Mettre à jour la date et le lieu
+    await client.query(
+      "UPDATE evenements SET date_evenement = '2026-09-04 19:00:00+00', lieu = 'Espace Le Villier, Yopougon Chambéry' WHERE TRUE"
+    );
     
     // Vérifier
-    const after = await client.query('SELECT id, nom, date_evenement FROM evenements');
+    const after = await client.query('SELECT id, nom, date_evenement, lieu FROM evenements');
     console.log('Après mise à jour:', after.rows);
     
     console.log('✅ Date mise à jour avec succès !');

@@ -2,27 +2,9 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Footer from './Footer';
 import ChatBot from './ChatBot';
+import { EVENT_DATE_LABEL, EVENT_TIME_LABEL, EVENT_LOCATION } from '../utils/eventInfo';
 
 const PARTICLE_COLORS = ['#c084fc', '#ec4899', '#7dd3fc', '#fcd34d', '#86efac'];
-const EVENT_DATE = new Date(2026, 7, 13);
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function getDaysRemaining() {
-  const today = new Date();
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.max(0, Math.ceil((EVENT_DATE - todayStart) / DAY_MS));
-}
-
-function getEventDateLabel() {
-  const formatted = new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(EVENT_DATE);
-
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
 
 export default function TicketHomePage() {
   const particles = useMemo(
@@ -41,8 +23,6 @@ export default function TicketHomePage() {
   const barcodeLines = useMemo(() => Array.from({ length: 35 }, (_, index) => index), []);
 
   const [selectedCategory, setSelectedCategory] = useState('');
-  const daysRemaining = getDaysRemaining();
-  const eventDateLabel = getEventDateLabel();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Scroll vers les tarifs si redirigé depuis le footer
@@ -126,8 +106,8 @@ export default function TicketHomePage() {
 
       <section className="home-stats-bar" aria-label="Statistiques du bal">
         <div className="home-stat-item">
-          <span className="home-stat-number">{daysRemaining}</span>
-          <span className="home-stat-label">Jours restants</span>
+          <span className="home-stat-number">04/09</span>
+          <span className="home-stat-label">Date du bal</span>
         </div>
         <div className="home-stat-item">
           <span className="home-stat-number">2</span>
@@ -144,11 +124,11 @@ export default function TicketHomePage() {
           <div className="home-ticket-card-header">
             <div>
               <div className="home-ticket-event-name">Grand Bal 2026 ✨</div>
-              <div className="home-ticket-year">Pigier CI - Abidjan</div>
+              <div className="home-ticket-year">Pigier CI</div>
             </div>
             <div className="home-ticket-price-tag">
               <span className="home-ticket-currency">A partir de</span>
-              <span className="home-ticket-amount">7 000</span>
+              <span className="home-ticket-amount">8 000</span>
               <span className="home-ticket-currency">FCFA</span>
             </div>
           </div>
@@ -164,15 +144,15 @@ export default function TicketHomePage() {
           <div className="home-ticket-info-grid">
             <div className="home-ticket-info-item">
               <div className="home-ticket-label">Date</div>
-              <div className="home-ticket-value">{eventDateLabel}</div>
+              <div className="home-ticket-value">{EVENT_DATE_LABEL}</div>
             </div>
             <div className="home-ticket-info-item">
               <div className="home-ticket-label">Heure</div>
-              <div className="home-ticket-value">20h00 - Minuit+</div>
+              <div className="home-ticket-value">{EVENT_TIME_LABEL}</div>
             </div>
             <div className="home-ticket-info-item">
               <div className="home-ticket-label">Lieu</div>
-              <div className="home-ticket-value">Palais de la Culture</div>
+              <div className="home-ticket-value">{EVENT_LOCATION}</div>
             </div>
             <div className="home-ticket-info-item">
               <div className="home-ticket-label">Type</div>
@@ -186,28 +166,14 @@ export default function TicketHomePage() {
               onClick={() => setSelectedCategory(selectedCategory === 'solo' ? '' : 'solo')}
             >
               <span>Solo</span>
-              <strong>7 000 FCFA</strong>
-              <div className={`promotion-panel ${selectedCategory === 'solo' ? 'visible' : ''}`}>
-                <del className="promotion-original-price">7 500 FCFA</del>
-                <div className="promotion-applicable-price">Prix applicable: 7 000 FCFA</div>
-                <div className="promotion-badge">Prochaine catégorie: 10 000 FCFA</div>
-                <div className="promotion-stock">🎯 Stock Early Bird: 15</div>
-              </div>
+              <strong>8 000 FCFA</strong>
             </div>
             <div
               className={`home-ticket-category ${selectedCategory === 'couple' ? 'active' : ''}`}
               onClick={() => setSelectedCategory(selectedCategory === 'couple' ? '' : 'couple')}
             >
               <span>Couple</span>
-              <strong>10 000 FCFA</strong>
-              {selectedCategory === 'couple' && (
-                <div className="promotion-panel">
-                  <del className="promotion-original-price">12 000 FCFA</del>
-                  <div className="promotion-applicable-price">Prix applicable: 10 000 FCFA</div>
-                  <div className="promotion-badge">💡 Early Bird: 20 places</div>
-                  <div className="promotion-stock">🎯 Stock Early Bird: 8</div>
-                </div>
-              )}
+              <strong>12 000 FCFA</strong>
             </div>
           </div>
 

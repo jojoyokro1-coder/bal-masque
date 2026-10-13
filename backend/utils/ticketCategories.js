@@ -1,6 +1,6 @@
 const TICKET_CATEGORIES = {
-  solo: { label: 'Solo', prix: 7000 },
-  couple: { label: 'Couple', prix: 10000 }
+  solo: { label: 'Solo', prix: 8000 },
+  couple: { label: 'Couple', prix: 12000 }
 };
 
 let ticketCategoryColumnsReady = false;

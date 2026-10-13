@@ -1,8 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
+const { isClientAuthDisabled } = require('../utils/clientAuthSettings');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'bal_masque_secret_2026';
+const CLIENT_AUTH_DISABLED_MESSAGE = 'Les inscriptions et connexions client sont temporairement suspendues. Les administrateurs peuvent continuer a se connecter.';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -27,6 +29,11 @@ const register = async (req, res) => {
   }
 
   try {
+    const clientAuthDisabled = await isClientAuthDisabled(db);
+    if (clientAuthDisabled) {
+      return res.status(403).json({ message: CLIENT_AUTH_DISABLED_MESSAGE });
+    }
+
     const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) {
       return res.status(409).json({ message: 'Cet email est deja utilise.' });
@@ -76,6 +83,13 @@ const login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       return res.status(401).json({ message: 'Identifiants incorrects.' });
+    }
+
+    if (user.role === 'client') {
+      const clientAuthDisabled = await isClientAuthDisabled(db);
+      if (clientAuthDisabled) {
+        return res.status(403).json({ message: CLIENT_AUTH_DISABLED_MESSAGE });
+      }
     }
 
     const token = jwt.sign(

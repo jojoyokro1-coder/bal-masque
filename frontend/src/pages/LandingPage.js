@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { EVENT_FULL_LABEL, EVENT_LOCATION } from '../utils/eventInfo';
 
 const STAR_COLORS = [
   '117, 190, 232',
@@ -125,6 +126,8 @@ export default function LandingPage() {
         <p className="landing-subtitle">Pigier CI · 2026</p>
         <p className="landing-desc">
           Une soirée inoubliable vous attend.<br />
+          {EVENT_FULL_LABEL}<br />
+          {EVENT_LOCATION}<br />
           Procurez-vous vos billets dès maintenant.
         </p>
 

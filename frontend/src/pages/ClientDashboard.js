@@ -71,7 +71,7 @@ export default function ClientDashboard() {
         return;
       }
 
-      toast.success('Commande créée. Redirection vers le paiement...');
+      toast.success('Redirection vers le paiement...');
       setQuantite(1);
       window.location.assign(paymentUrl);
     } catch (err) {
@@ -88,8 +88,8 @@ export default function ClientDashboard() {
   });
 
   const categoriesTickets = evenement?.categories_tickets || {
-    solo: { label: 'Solo', prix: 7000 },
-    couple: { label: 'Couple', prix: 10000 }
+    solo: { label: 'Solo', prix: 8000 },
+    couple: { label: 'Couple', prix: 12000 }
   };
   const categorieActive = categoriesTickets[categorieTicket] || categoriesTickets.solo;
   const prixTicket = Number(categorieActive?.prix || 0);
@@ -98,7 +98,7 @@ export default function ClientDashboard() {
   const calculerPrixSolo = (rang) => {
     if (rang === 1) return { prix: 0, badge: '🎉 Ticket Offert · Premier acheteur' };
     if (rang >= 2 && rang <= 5) return { prix: 5000, badge: '🔥 Offre Early Bird · -28%' };
-    return { prix: 7000, badge: null };
+    return { prix: 8000, badge: null };
   };
   const promotionSelection = (() => {
     if (categorieTicket !== 'solo' || !promotionSolo) return null;
@@ -108,7 +108,7 @@ export default function ClientDashboard() {
     });
 
     return {
-      originalPrice: Number(promotionSolo.original_price || 7000),
+      originalPrice: Number(promotionSolo.original_price || 8000),
       earlyBirdRemaining: Number(promotionSolo.early_bird_remaining || 0),
       limitedRemaining: Number(promotionSolo.limited_stock_remaining || 0),
       tickets: ticketsPromo,

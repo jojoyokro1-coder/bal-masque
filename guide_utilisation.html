@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Guide d'Utilisation - Bal Masqué</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: #1a1a2e;
+      background: #fff;
+      line-height: 1.7;
+      font-size: 13px;
+    }
+
+    @page {
+      size: A4;
+      margin: 18mm 20mm;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page-break { page-break-before: always; }
+      .cover { page-break-after: always; }
+      .no-print { display: none !important; }
+    }
+
+    /* ---- COVER ---- */
+    .cover {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a0533 40%, #2d0a4e 70%, #0a0a1a 100%);
+      color: #fff;
+      text-align: center;
+      padding: 60px 40px;
+    }
+    .cover-emoji { font-size: 80px; margin-bottom: 24px; }
+    .cover h1 {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: 6px;
+      background: linear-gradient(135deg, #e9529b, #be84ff, #75bee8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+    .cover .subtitle {
+      font-size: 18px;
+      font-weight: 300;
+      color: #c8b6ff;
+      margin-bottom: 40px;
+    }
+    .cover .doc-title {
+      font-size: 26px;
+      font-weight: 600;
+      color: #fff;
+      border: 2px solid rgba(190,132,255,0.4);
+      border-radius: 12px;
+      padding: 16px 40px;
+      margin-bottom: 50px;
+    }
+    .cover .meta {
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      line-height: 2;
+    }
+
+    /* ---- CONTENT ---- */
+    .content {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 50px 30px;
+    }
+
+    /* TOC */
+    .toc {
+      margin-bottom: 40px;
+    }
+    .toc h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #2d0a4e;
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+      border-bottom: 3px solid #be84ff;
+    }
+    .toc ol {
+      list-style: none;
+      counter-reset: toc;
+      padding: 0;
+    }
+    .toc ol li {
+      counter-increment: toc;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0eaff;
+      font-size: 14px;
+    }
+    .toc ol li::before {
+      content: counter(toc) ".";
+      font-weight: 700;
+      color: #be84ff;
+      margin-right: 10px;
+    }
+
+    /* SECTIONS */
+    .section {
+      margin-bottom: 36px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #be84ff;
+    }
+    .section-number {
+      background: linear-gradient(135deg, #2d0a4e, #be84ff);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .section-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #2d0a4e;
+    }
+
+    .subsection {
+      margin: 20px 0 12px 0;
+    }
+    .subsection h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #57115a;
+      margin-bottom: 8px;
+      padding-left: 8px;
+      border-left: 3px solid #e9529b;
+    }
+
+    p {
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    ul {
+      padding-left: 22px;
+      margin-bottom: 12px;
+    }
+    ul li {
+      margin-bottom: 6px;
+      color: #444;
+    }
+    ul li strong {
+      color: #2d0a4e;
+    }
+
+    .highlight-box {
+      background: linear-gradient(135deg, #f8f4ff, #f0eaff);
+      border-left: 4px solid #be84ff;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-size: 13px;
+    }
+    .highlight-box.warning {
+      background: linear-gradient(135deg, #fff8f0, #ffefdb);
+      border-left-color: #eec749;
+    }
+    .highlight-box.success {
+      background: linear-gradient(135deg, #f0fff5, #e0ffe8);
+      border-left-color: #6fdba7;
+    }
+
+    .role-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .role-badge.client { background: #e0ffe8; color: #1a7a3a; }
+    .role-badge.inspecteur { background: #fff3db; color: #8a6d00; }
+    .role-badge.admin { background: #f0eaff; color: #57115a; }
+
+    .footer-note {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 2px solid #f0eaff;
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+    }
+
+    /* Print button */
+    .print-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, #2d0a4e, #57115a);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 1000;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    .print-bar span { color: #c8b6ff; font-size: 14px; }
+    .print-btn {
+      background: #be84ff;
+      color: #fff;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .print-btn:hover { background: #a065e0; }
+  </style>
+</head>
+<body>
+
+  <!-- Print bar (hidden in print) -->
+  <div class="print-bar no-print">
+    <span>📄 Cliquez pour sauvegarder en PDF :</span>
+    <button class="print-btn" onclick="window.print()">💾 Enregistrer en PDF</button>
+  </div>
+
+  <!-- ====== COVER PAGE ====== -->
+  <div class="cover">
+    <div class="cover-emoji">🎭</div>
+    <h1>BAL MASQUÉ</h1>
+    <p class="subtitle">Pigier CI · 2026</p>
+    <div class="doc-title">📖 Guide d'Utilisation Complet</div>
+    <div class="meta">
+      Version 1.0<br>
+      Juillet 2026<br>
+      Application de billetterie événementielle
+    </div>
+  </div>
+
+  <!-- ====== CONTENT ====== -->
+  <div class="content">
+
+    <!-- Table of Contents -->
+    <div class="toc page-break">
+      <h2>📋 Table des Matières</h2>
+      <ol>
+        <li>Fonctionnalités Publiques <span class="role-badge client">Tout le monde</span></li>
+        <li>Inscription et Connexion <span class="role-badge client">Tout le monde</span></li>
+        <li>Espace Client <span class="role-badge client">Client</span></li>
+        <li>Espace Inspecteur <span class="role-badge inspecteur">Inspecteur</span></li>
+        <li>Espace Administrateur <span class="role-badge admin">Admin</span></li>
+      </ol>
+    </div>
+
+    <!-- Section 1 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-number">1</div>
+        <h2>Fonctionnalités Publiques</h2>
+      </div>
+      <p>Ces pages sont accessibles à <strong>tous les visiteurs</strong> sans avoir besoin de se connecter.</p>
+
+      <div class="subsection">
+        <h3>🏠 Page d'Accueil (Landing Page)</h3>
+        <p>La page d'accueil présente l'événement Bal Masqué avec une ambiance visuelle nocturne et des étoiles animées. Elle offre un accès rapide aux boutons :</p>
+        <ul>
+          <li><strong>Se connecter</strong> – pour accéder à son espace personnel.</li>
+          <li><strong>Créer un compte</strong> – pour s'inscrire en tant que participant.</li>
+        </ul>
+      </div>
+
+      <div class="subsection">
+        <h3>🎶 Le Programme</h3>
+        <p>Cette page affiche le déroulement complet de la soirée : les horaires, les différentes animations prévues, les artistes et les temps forts de l'événement.</p>
+      </div>
+
+      <div class="subsection">
+        <h3>🎫 Page des Tickets</h3>
+        <p>Présente les différentes offres de billetterie disponibles :</p>
+        <ul>
+          <li><strong>Ticket Solo</strong> – billet individuel.</li>
+          <li><strong>Ticket Couple</strong> – billet pour deux personnes à tarif avantageux.</li>
+        </ul>
+        <p>Chaque offre indique clairement le prix et les avantages inclus.</p>
+      </div>
+
+      <div class="subsection">
+        <h3>🤖 ChatBot Assistant</h3>
+        <p>Un assistant virtuel intelligent est intégré à l'application. Il répond aux questions fréquentes des visiteurs concernant :</p>
+        <ul>
+          <li>Les détails de l'événement (date, lieu, horaires).</li>
+          <li>Le code vestimentaire et les tenues recommandées.</li>
+          <li>L'organisation générale et les conditions d'accès.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Section 2 -->
+    <div class="section page-break">
+      <div class="section-header">
+        <div class="section-number">2</div>
+        <h2>Inscription et Connexion</h2>
+      </div>
+
+      <div class="subsection">
+        <h3>📝 Créer un Compte (Inscription)</h3>
+        <p>Les nouveaux utilisateurs peuvent s'inscrire en tant que <strong>client</strong> en remplissant le formulaire avec :</p>
+        <ul>
+          <li>Nom et Prénom</li>
+          <li>Adresse email (unique)</li>
+          <li>Mot de passe sécurisé</li>
+        </ul>
+        <div class="highlight-box warning">
+          ⚠️ <strong>Note :</strong> L'administrateur peut désactiver les inscriptions et connexions clients à tout moment. Si vous recevez un message d'erreur, contactez l'organisation.
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>🔐 Se Connecter</h3>
+        <p>Permet d'accéder à son espace personnel en saisissant son <strong>email</strong> et son <strong>mot de passe</strong>. Après connexion, l'utilisateur est automatiquement redirigé vers le tableau de bord correspondant à son rôle :</p>
+        <ul>
+          <li><strong>Client</strong> → Espace Client</li>
+          <li><strong>Inspecteur</strong> → Espace Inspecteur</li>
+          <li><strong>Administrateur / Sous-Admin</strong> → Espace Administrateur</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Section 3 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-number">3</div>
+        <h2>Espace Client <span class="role-badge client">Client</span></h2>
+      </div>
+      <p>L'espace réservé aux participants de l'événement. Accessible après connexion avec un compte client.</p>
+
+      <div class="subsection">
+        <h3>🛒 Achat de Tickets</h3>
+        <ul>
+          <li>Sélectionner le type de ticket souhaité (<strong>Solo</strong> ou <strong>Couple</strong>).</li>
+          <li>Choisir la quantité.</li>
+          <li>Procéder au <strong>paiement en ligne sécurisé</strong>.</li>
+          <li>Recevoir une confirmation d'achat avec les détails de la commande.</li>
+        </ul>
+        <div class="highlight-box warning">
+          ⚠️ <strong>Note :</strong> Les paiements peuvent être temporairement désactivés par l'administrateur. Un message clair vous informera dans ce cas.
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>📱 Gestion des Tickets & QR Codes</h3>
+        <p>Après l'achat, les tickets sont visibles dans votre espace personnel :</p>
+        <ul>
+          <li><strong>Liste de vos tickets</strong> – avec le type, le prix et le statut (actif / utilisé).</li>
+          <li><strong>QR Code unique</strong> – chaque ticket possède un QR code qu'il faut présenter à l'entrée de la soirée pour être scanné par un inspecteur.</li>
+        </ul>
+        <div class="highlight-box success">
+          ✅ <strong>Conseil :</strong> Faites une capture d'écran de votre QR Code au cas où vous n'auriez pas de connexion Internet le jour de l'événement.
+        </div>
+      </div>
+
+
+      <div class="subsection">
+        <h3>💬 Donner son Avis</h3>
+        <p>Vous pouvez laisser un avis et un commentaire sur l'événement. Votre retour est précieux pour l'amélioration des futures éditions.</p>
+      </div>
+    </div>
+
+    <!-- Section 4 -->
+    <div class="section page-break">
+      <div class="section-header">
+        <div class="section-number">4</div>
+        <h2>Espace Inspecteur <span class="role-badge inspecteur">Inspecteur</span></h2>
+      </div>
+      <p>Ce rôle est destiné au personnel chargé de contrôler les accès le jour de l'événement. Le compte inspecteur est créé par un administrateur.</p>
+
+      <div class="subsection">
+        <h3>📷 Scanner les QR Codes</h3>
+        <p>Utilisez l'appareil photo de votre smartphone ou de votre tablette pour scanner les QR codes présentés par les participants :</p>
+        <ul>
+          <li>Appuyez sur le bouton <strong>« Scanner un ticket »</strong>.</li>
+          <li>Visez le QR code avec l'appareil photo.</li>
+          <li>Le résultat s'affiche instantanément.</li>
+        </ul>
+      </div>
+
+      <div class="subsection">
+        <h3>✅ Vérification en Temps Réel</h3>
+        <p>Après chaque scan, l'application affiche l'un des statuts suivants :</p>
+        <ul>
+          <li><strong style="color:#22c55e;">✅ Ticket Valide</strong> – Le participant peut entrer. Le ticket est automatiquement marqué comme « utilisé ».</li>
+          <li><strong style="color:#eab308;">⚠️ Déjà Utilisé</strong> – Ce ticket a déjà été scanné. Accès refusé.</li>
+          <li><strong style="color:#ef4444;">❌ Ticket Invalide</strong> – Le QR code n'est pas reconnu. Accès refusé.</li>
+        </ul>
+        <div class="highlight-box">
+          💡 <strong>Info :</strong> Chaque scan enregistre automatiquement la date, l'heure et l'identité de l'inspecteur ayant effectué la vérification.
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 5 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-number">5</div>
+        <h2>Espace Administrateur <span class="role-badge admin">Admin</span></h2>
+      </div>
+      <p>L'interface d'administration est le cœur de contrôle de l'application. Elle permet aux organisateurs de tout gérer depuis un tableau de bord centralisé.</p>
+
+      <div class="subsection">
+        <h3>📊 Tableau de Bord & Statistiques</h3>
+        <p>Vue globale en temps réel sur toutes les métriques clés :</p>
+        <ul>
+          <li><strong>Nombre total de tickets vendus</strong> (Solo et Couple séparément).</li>
+          <li><strong>Tickets scannés vs tickets actifs.</strong></li>
+          <li><strong>Montant total des ventes</strong> en FCFA.</li>
+          <li><strong>Nombre de clients inscrits.</strong></li>
+        </ul>
+      </div>
+
+
+      <div class="subsection">
+        <h3>🎪 Gestion de l'Événement</h3>
+        <p>Modifiez à tout moment les détails de l'événement :</p>
+        <ul>
+          <li>Nom et description de l'événement.</li>
+          <li>Date et lieu.</li>
+          <li>Prix par défaut des tickets.</li>
+          <li>Capacité totale (nombre de tickets disponibles).</li>
+        </ul>
+      </div>
+
+      <div class="subsection">
+        <h3>⚙️ Contrôles Globaux</h3>
+        <p>Des interrupteurs permettent d'activer ou désactiver des fonctionnalités critiques :</p>
+        <ul>
+          <li><strong>Inscriptions & connexions clients</strong> – bloquer l'accès client si nécessaire.</li>
+          <li><strong>Paiements en ligne</strong> – suspendre temporairement les transactions.</li>
+          <li><strong>Réinitialiser les compteurs</strong> – remettre à zéro toutes les statistiques (⚠️ supprime tickets, commandes et comptes clients).</li>
+        </ul>
+        <div class="highlight-box warning">
+          ⚠️ <strong>Attention :</strong> La réinitialisation des compteurs est une action irréversible. Elle supprime l'intégralité des tickets, commandes et comptes clients de la base de données.
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>👥 Gestion des Clients</h3>
+        <ul>
+          <li>Consulter la liste complète des clients inscrits.</li>
+          <li>Réinitialiser le mot de passe d'un client en cas de besoin.</li>
+        </ul>
+      </div>
+
+      <div class="subsection">
+        <h3>🔑 Gestion du Personnel</h3>
+        <p><strong>Inspecteurs :</strong></p>
+        <ul>
+          <li>Créer un compte inspecteur (nom, prénom, email, mot de passe).</li>
+          <li>Voir la liste des inspecteurs existants.</li>
+          <li>Supprimer un inspecteur.</li>
+        </ul>
+        <p><strong>Sous-Administrateurs :</strong></p>
+        <ul>
+          <li>Créer un compte sous-admin pour déléguer certaines responsabilités.</li>
+          <li>Voir la liste des sous-admins.</li>
+          <li>Supprimer un sous-admin.</li>
+        </ul>
+      </div>
+
+      <div class="subsection">
+        <h3>🎫 Suivi des Tickets</h3>
+        <p>Accédez à la liste complète de tous les tickets générés, incluant :</p>
+        <ul>
+          <li>Le code unique et le type de ticket.</li>
+          <li>Le nom du client acheteur.</li>
+          <li>Le prix payé.</li>
+          <li>Le statut (actif ou utilisé).</li>
+          <li>La date de scan et le nom de l'inspecteur (si applicable).</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-note">
+      <p>📧 Pour toute assistance technique, veuillez contacter l'équipe d'organisation.</p>
+      <p>© 2026 Bal Masqué · Pigier CI · Tous droits réservés</p>
+    </div>
+
+  </div>
+
+</body>
+</html>

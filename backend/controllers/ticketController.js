@@ -2,23 +2,19 @@ const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../config/db');
 const { TICKET_CATEGORIES, normalizeTicketType, ensureTicketCategoryColumns } = require('../utils/ticketCategories');
-const {
-  ensureLaunchPromotionColumns,
-  getConfirmedSoloTicketCount,
-  buildSoloPromotionQuote,
-  buildPromotionSummary
-} = require('../utils/launchPromotion');
+const { normalizeEventInfo } = require('../utils/eventInfo');
 
 const DELAI_COMMANDE_MS = 2 * 60 * 1000; // 2 minutes
 const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+const DEFAULT_PAYMENT_LINKS = {
+  solo: 'https://pay.jeko.africa/pl/c78ebe8c-a33c-4fe5-b049-245430647df5',
+  couple: 'https://pay.jeko.africa/pl/a90a5ca4-08d1-4825-baed-d7c60cbc0464'
+};
+const PAYMENTS_DISABLED_MESSAGE = 'Les paiements sont temporairement suspendus. Veuillez reessayer plus tard.';
 
 const getPaymentLink = (ticketType, prixUnitaire) => {
-  if (Number(prixUnitaire) === 5000) {
-    if (process.env.PAYMENT_LINK_EARLY_BIRD) return process.env.PAYMENT_LINK_EARLY_BIRD;
-    if (process.env.PAYMENT_LINK_5000) return process.env.PAYMENT_LINK_5000;
-  }
   const key = `PAYMENT_LINK_${String(ticketType || '').toUpperCase()}`;
-  return process.env[key] || process.env.PAYMENT_LINK_DEFAULT || '';
+  return process.env[key] || process.env.PAYMENT_LINK_DEFAULT || DEFAULT_PAYMENT_LINKS[ticketType] || DEFAULT_PAYMENT_LINKS.solo;
 };
 
 const extraireCodeTicket = (valeur) => {
@@ -49,7 +45,6 @@ const createTransactionalDb = (client) => ({
     return [result.rows, result];
   }
 });
-
 // Acheter des tickets
 const acheterTickets = async (req, res) => {
   const { evenement_id, quantite } = req.body;
@@ -65,8 +60,12 @@ const acheterTickets = async (req, res) => {
   }
 
   try {
+    const { arePaymentsDisabled } = require('../utils/paymentSettings');
+    if (await arePaymentsDisabled(db)) {
+      return res.status(403).json({ message: PAYMENTS_DISABLED_MESSAGE });
+    }
+
     await ensureTicketCategoryColumns(db);
-    await ensureLaunchPromotionColumns(db);
 
     // Vérifier le délai de 2 minutes depuis la dernière commande
     const [dernieres] = await db.query(
@@ -110,14 +109,8 @@ const acheterTickets = async (req, res) => {
     }
 
     const categorie = TICKET_CATEGORIES[ticket_type];
-    const confirmedSoloCount = ticket_type === 'solo'
-      ? await getConfirmedSoloTicketCount(db, evenement_id)
-      : 0;
-    const promotionQuote = ticket_type === 'solo'
-      ? buildSoloPromotionQuote(confirmedSoloCount, quantite)
-      : null;
-    const prix_unitaire = promotionQuote?.tickets[0]?.prix_unitaire ?? categorie.prix;
-    const montant_total = promotionQuote?.total ?? prix_unitaire * quantite;
+    const prix_unitaire = categorie.prix;
+    const montant_total = prix_unitaire * quantite;
     const payment_url = getPaymentLink(ticket_type, prix_unitaire);
 
     if (!payment_url) {
@@ -128,8 +121,8 @@ const acheterTickets = async (req, res) => {
 
     // Créer la commande
     const [commandeRows] = await db.query(
-      "INSERT INTO commandes (client_id, evenement_id, quantite, montant_total, ticket_type, prix_unitaire, statut, promotion_details) VALUES (?, ?, ?, ?, ?, ?, 'en_attente', ?) RETURNING id",
-      [client_id, evenement_id, quantite, montant_total, ticket_type, prix_unitaire, promotionQuote ? JSON.stringify(promotionQuote) : null]
+      "INSERT INTO commandes (client_id, evenement_id, quantite, montant_total, ticket_type, prix_unitaire, statut) VALUES (?, ?, ?, ?, ?, ?, 'en_attente') RETURNING id",
+      [client_id, evenement_id, quantite, montant_total, ticket_type, prix_unitaire]
     );
 
     const commande_id = commandeRows[0].id;
@@ -143,7 +136,6 @@ const acheterTickets = async (req, res) => {
       montant_total,
       ticket_type,
       prix_unitaire,
-      promotion: promotionQuote,
       payment_url
     });
   } catch (err) {
@@ -222,11 +214,9 @@ const validerPaiement = async (req, res) => {
 const mesTickets = async (req, res) => {
   try {
     await ensureTicketCategoryColumns(db);
-    await ensureLaunchPromotionColumns(db);
-    await ensureLaunchPromotionColumns(db);
 
     const [rows] = await db.query(`
-      SELECT t.id, t.code_unique, t.qr_code_data, t.ticket_type, t.prix_unitaire, t.rang_acheteur, t.promotion_badge, t.statut, t.created_at,
+      SELECT t.id, t.code_unique, t.qr_code_data, t.ticket_type, t.prix_unitaire, t.statut, t.created_at,
              e.nom as evenement_nom, e.date_evenement, e.lieu, e.prix_ticket,
              c.quantite, c.montant_total
       FROM tickets t
@@ -236,7 +226,7 @@ const mesTickets = async (req, res) => {
       ORDER BY t.created_at DESC
     `, [req.user.id]);
 
-    res.json(rows);
+    res.json(rows.map(normalizeEventInfo));
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
@@ -265,7 +255,7 @@ const mesCommandes = async (req, res) => {
       }
     }
 
-    res.json({ commandes: rows, resteSecondes });
+    res.json({ commandes: rows.map(normalizeEventInfo), resteSecondes });
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
@@ -342,17 +332,13 @@ const scannerTicket = async (req, res) => {
 // Infos événement public
 const obtenirEvenementPublic = async (req, res) => {
   try {
-    await ensureLaunchPromotionColumns(db);
-
     const [rows] = await db.query(
       'SELECT id, nom, description, date_evenement, lieu, prix_ticket, quantite_disponible FROM evenements WHERE actif = true LIMIT 1'
     );
     const evenement = rows[0] || null;
-    const confirmedSoloCount = evenement ? await getConfirmedSoloTicketCount(db, evenement.id) : 0;
     res.json(evenement ? {
-      ...evenement,
-      categories_tickets: TICKET_CATEGORIES,
-      promotion_lancement: buildPromotionSummary(confirmedSoloCount)
+      ...normalizeEventInfo(evenement),
+      categories_tickets: TICKET_CATEGORIES
     } : null);
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' });
@@ -368,8 +354,12 @@ const validerPaiementAvecPromotion = async (req, res) => {
   }
 
   try {
+    const { arePaymentsDisabled } = require('../utils/paymentSettings');
+    if (await arePaymentsDisabled(db)) {
+      return res.status(403).json({ message: PAYMENTS_DISABLED_MESSAGE });
+    }
+
     await ensureTicketCategoryColumns(db);
-    await ensureLaunchPromotionColumns(db);
 
     const client = await db.pool.connect();
 
@@ -397,25 +387,17 @@ const validerPaiementAvecPromotion = async (req, res) => {
 
       await txDb.query('SELECT pg_advisory_xact_lock(?)', [Number(commande.evenement_id)]);
 
-      const confirmedSoloCount = commande.ticket_type === 'solo'
-        ? await getConfirmedSoloTicketCount(txDb, commande.evenement_id)
-        : 0;
-      const promotionQuote = commande.ticket_type === 'solo'
-        ? buildSoloPromotionQuote(confirmedSoloCount, commande.quantite)
-        : null;
-      const montantTotal = promotionQuote?.total ?? Number(commande.prix_unitaire) * Number(commande.quantite);
+      const montantTotal = Number(commande.prix_unitaire) * Number(commande.quantite);
       const ticketsGeneres = [];
 
       for (let i = 0; i < commande.quantite; i++) {
         const code_unique = uuidv4();
-        const promoTicket = promotionQuote?.tickets[i] || null;
-        const prixUnitaireTicket = promoTicket?.prix_unitaire ?? commande.prix_unitaire;
+        const prixUnitaireTicket = commande.prix_unitaire;
         const payload = JSON.stringify({
           ticket: code_unique,
           evenement: commande.evenement_id,
           client: client_id,
-          categorie: commande.ticket_type,
-          rang: promoTicket?.rank || null
+          categorie: commande.ticket_type
         });
 
         const qr_code_data = await QRCode.toDataURL(payload, {
@@ -425,8 +407,8 @@ const validerPaiementAvecPromotion = async (req, res) => {
         });
 
         const [ticketRows] = await txDb.query(
-          'INSERT INTO tickets (commande_id, client_id, evenement_id, code_unique, qr_code_data, ticket_type, prix_unitaire, rang_acheteur, promotion_badge) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
-          [commande_id, client_id, commande.evenement_id, code_unique, qr_code_data, commande.ticket_type, prixUnitaireTicket, promoTicket?.rank || null, promoTicket?.promotion_badge || null]
+          'INSERT INTO tickets (commande_id, client_id, evenement_id, code_unique, qr_code_data, ticket_type, prix_unitaire) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
+          [commande_id, client_id, commande.evenement_id, code_unique, qr_code_data, commande.ticket_type, prixUnitaireTicket]
         );
 
         ticketsGeneres.push({
@@ -434,15 +416,13 @@ const validerPaiementAvecPromotion = async (req, res) => {
           code_unique,
           qr_code_data,
           ticket_type: commande.ticket_type,
-          prix_unitaire: prixUnitaireTicket,
-          rang_acheteur: promoTicket?.rank || null,
-          promotion_badge: promoTicket?.promotion_badge || null
+          prix_unitaire: prixUnitaireTicket
         });
       }
 
       await txDb.query(
-        "UPDATE commandes SET statut = 'payee', montant_total = ?, prix_unitaire = ?, promotion_details = ? WHERE id = ?",
-        [montantTotal, ticketsGeneres[0]?.prix_unitaire ?? commande.prix_unitaire, promotionQuote ? JSON.stringify(promotionQuote) : null, commande_id]
+        "UPDATE commandes SET statut = 'payee', montant_total = ?, prix_unitaire = ? WHERE id = ?",
+        [montantTotal, ticketsGeneres[0]?.prix_unitaire ?? commande.prix_unitaire, commande_id]
       );
 
       await client.query('COMMIT');
@@ -450,7 +430,6 @@ const validerPaiementAvecPromotion = async (req, res) => {
       res.status(200).json({
         message: 'Paiement valide, tickets generes.',
         montant_total: montantTotal,
-        promotion: promotionQuote,
         tickets: ticketsGeneres
       });
     } catch (err) {
@@ -465,4 +444,11 @@ const validerPaiementAvecPromotion = async (req, res) => {
   }
 };
 
-module.exports = { acheterTickets, validerPaiement: validerPaiementAvecPromotion, mesTickets, mesCommandes, scannerTicket, obtenirEvenementPublic };
+module.exports = {
+  acheterTickets,
+  validerPaiement: validerPaiementAvecPromotion,
+  mesTickets,
+  mesCommandes,
+  scannerTicket,
+  obtenirEvenementPublic
+};

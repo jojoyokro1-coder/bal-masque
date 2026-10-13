@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { EVENT_FULL_LABEL, EVENT_LOCATION } from '../utils/eventInfo';
 
 const STAR_COLORS = [
   '117, 190, 232',
@@ -127,7 +128,7 @@ export default function HomePage() {
     <main className="landing-page" aria-label="Accueil BalFest">
       <canvas ref={canvasRef} className="landing-canvas" aria-hidden="true" />
       <footer className="landing-footer">
-        © 2026 BalFest · Pigier CI · Tous droits réservés
+        {EVENT_FULL_LABEL} · {EVENT_LOCATION}
       </footer>
     </main>
   );

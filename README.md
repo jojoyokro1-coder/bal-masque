@@ -85,7 +85,7 @@ L'app tourne sur `http://localhost:3000`
 
 | Rôle | Email | Mot de passe |
 |------|-------|-------------|
-| Admin | admin@balmasque.ci | Admin@123 |
+| Admin | admin@balmasque.ci | Admin@@123 |
 
 ---
 

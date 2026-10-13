@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import './LoadingScreen.css';
+import { EVENT_FULL_LABEL, EVENT_LOCATION } from '../utils/eventInfo';
 
 const STATUS_MESSAGES = [
   'Préparation de la soirée',
@@ -289,8 +290,8 @@ export default function LoadingScreen({ onComplete }) {
           <div className="ls-percent">{progress}%</div>
         </div>
 
-        <div className="ls-date-label">Jeudi 13 Août 2026</div>
-        <div className="ls-pigier-tag">Pigier &middot; Abidjan &middot; Côte d'Ivoire</div>
+        <div className="ls-date-label">{EVENT_FULL_LABEL}</div>
+        <div className="ls-pigier-tag">{EVENT_LOCATION}</div>
       </div>
 
       {/* Enter Screen */}

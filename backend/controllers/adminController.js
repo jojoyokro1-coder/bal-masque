@@ -1,6 +1,58 @@
 const bcrypt = require('bcryptjs');
+const QRCode = require('qrcode');
+const { v4: uuidv4 } = require('uuid');
 const db = require('../config/db');
 const { ensureTicketCategoryColumns } = require('../utils/ticketCategories');
+const { isClientAuthDisabled, setClientAuthDisabled } = require('../utils/clientAuthSettings');
+const { arePaymentsDisabled, setPaymentsDisabled } = require('../utils/paymentSettings');
+const { isVoteTabVisible, setVoteTabVisible } = require('../utils/voteTabSettings');
+const { EVENT_DATE_ISO, EVENT_LOCATION, normalizeEventInfo } = require('../utils/eventInfo');
+
+const toPostgresQuery = (sql) => {
+  let index = 0;
+  return sql.replace(/\?/g, () => `$${++index}`);
+};
+
+const createTransactionalDb = (client) => ({
+  query: async (sql, params = []) => {
+    const result = await client.query(toPostgresQuery(sql), params);
+    return [result.rows, result];
+  }
+});
+
+const genererTicketsPourCommande = async (txDb, commande) => {
+  const ticketsGeneres = [];
+
+  for (let i = 0; i < Number(commande.quantite); i++) {
+    const code_unique = uuidv4();
+    const payload = JSON.stringify({
+      ticket: code_unique,
+      evenement: commande.evenement_id,
+      client: commande.client_id,
+      categorie: commande.ticket_type
+    });
+
+    const qr_code_data = await QRCode.toDataURL(payload, {
+      errorCorrectionLevel: 'H',
+      width: 300,
+      margin: 2
+    });
+
+    const [ticketRows] = await txDb.query(
+      'INSERT INTO tickets (commande_id, client_id, evenement_id, code_unique, qr_code_data, ticket_type, prix_unitaire) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
+      [commande.id, commande.client_id, commande.evenement_id, code_unique, qr_code_data, commande.ticket_type, commande.prix_unitaire]
+    );
+
+    ticketsGeneres.push({
+      id: ticketRows[0].id,
+      code_unique,
+      ticket_type: commande.ticket_type,
+      prix_unitaire: commande.prix_unitaire
+    });
+  }
+
+  return ticketsGeneres;
+};
 
 // Créer un inspecteur
 const creerInspecteur = async (req, res) => {
@@ -72,7 +124,7 @@ const statistiques = async (req, res) => {
       totalClients,
       ticketsSolo,
       ticketsCouple,
-      evenement: evenement[0] || null
+      evenement: normalizeEventInfo(evenement[0] || null)
     });
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' });
@@ -126,11 +178,11 @@ const tousLesTickets = async (req, res) => {
 
 // Gérer l'événement
 const mettreAJourEvenement = async (req, res) => {
-  const { nom, description, date_evenement, lieu, prix_ticket, quantite_totale } = req.body;
+  const { nom, description, prix_ticket, quantite_totale } = req.body;
   try {
     await db.query(
       `UPDATE evenements SET nom=?, description=?, date_evenement=?, lieu=?, prix_ticket=?, quantite_totale=? WHERE actif=true`,
-      [nom, description, date_evenement, lieu, prix_ticket, quantite_totale]
+      [nom, description, EVENT_DATE_ISO, EVENT_LOCATION, prix_ticket, quantite_totale]
     );
     res.json({ message: 'Événement mis à jour.' });
   } catch (err) {
@@ -141,7 +193,7 @@ const mettreAJourEvenement = async (req, res) => {
 const obtenirEvenement = async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM evenements WHERE actif = true LIMIT 1');
-    res.json(rows[0] || null);
+    res.json(normalizeEventInfo(rows[0] || null));
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' });
   }
@@ -230,4 +282,195 @@ const reinitialiserMotDePasseClient = async (req, res) => {
   }
 };
 
-module.exports = { creerInspecteur, listeInspecteurs, supprimerInspecteur, statistiques, reinitialiserCompteurs, tousLesTickets, mettreAJourEvenement, obtenirEvenement, creerSousAdmin, listeSousAdmins, supprimerSousAdmin, listeClients, reinitialiserMotDePasseClient };
+const obtenirStatutAuthClients = async (req, res) => {
+  try {
+    res.json({ disabled: await isClientAuthDisabled(db) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+const mettreAJourStatutAuthClients = async (req, res) => {
+  const disabled = req.body?.disabled;
+
+  if (typeof disabled !== 'boolean') {
+    return res.status(400).json({ message: 'Le champ disabled doit etre un booleen.' });
+  }
+
+  try {
+    await setClientAuthDisabled(db, disabled);
+    res.json({
+      disabled,
+      message: disabled
+        ? 'Inscriptions et connexions client bloquees.'
+        : 'Inscriptions et connexions client debloquees.'
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+const obtenirStatutPaiements = async (req, res) => {
+  try {
+    res.json({ disabled: await arePaymentsDisabled(db) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+const mettreAJourStatutPaiements = async (req, res) => {
+  const disabled = req.body?.disabled;
+
+  if (typeof disabled !== 'boolean') {
+    return res.status(400).json({ message: 'Le champ disabled doit etre un booleen.' });
+  }
+
+  try {
+    await setPaymentsDisabled(db, disabled);
+    res.json({
+      disabled,
+      message: disabled
+        ? 'Paiements bloques.'
+        : 'Paiements debloques.'
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+const toutesLesCommandes = async (req, res) => {
+  try {
+    await ensureTicketCategoryColumns(db);
+
+    const [rows] = await db.query(`
+      SELECT c.id, c.quantite, c.ticket_type, c.prix_unitaire, c.montant_total, c.statut,
+             c.reference_paiement, c.created_at, c.updated_at,
+             u.nom, u.prenom, u.email,
+             e.nom as evenement_nom,
+             COUNT(t.id)::int as tickets_generes
+      FROM commandes c
+      JOIN users u ON c.client_id = u.id
+      JOIN evenements e ON c.evenement_id = e.id
+      LEFT JOIN tickets t ON t.commande_id = c.id
+      GROUP BY c.id, u.nom, u.prenom, u.email, e.nom
+      ORDER BY c.created_at DESC
+    `);
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+const validerCommandePayee = async (req, res) => {
+  const commandeId = Number(req.params.id);
+  const referencePaiement = String(req.body?.reference_paiement || '').trim() || null;
+
+  if (!commandeId) {
+    return res.status(400).json({ message: 'Commande invalide.' });
+  }
+
+  const client = await db.pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    const txDb = createTransactionalDb(client);
+
+    const [commandes] = await txDb.query('SELECT * FROM commandes WHERE id = ? FOR UPDATE', [commandeId]);
+    if (commandes.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Commande introuvable.' });
+    }
+
+    const commande = commandes[0];
+    const [ticketsExistants] = await txDb.query('SELECT COUNT(*)::int as total FROM tickets WHERE commande_id = ?', [commandeId]);
+
+    if (Number(ticketsExistants[0]?.total || 0) > 0) {
+      await txDb.query(
+        'UPDATE commandes SET statut = ?, reference_paiement = COALESCE(?, reference_paiement) WHERE id = ?',
+        ['payee', referencePaiement, commandeId]
+      );
+      await client.query('COMMIT');
+      return res.json({ message: 'Commande deja validee.', tickets: [] });
+    }
+
+    const ticketsGeneres = await genererTicketsPourCommande(txDb, commande);
+
+    await txDb.query(
+      'UPDATE commandes SET statut = ?, reference_paiement = COALESCE(?, reference_paiement) WHERE id = ?',
+      ['payee', referencePaiement, commandeId]
+    );
+    await txDb.query(
+      'UPDATE evenements SET quantite_disponible = GREATEST(quantite_disponible - ?, 0) WHERE id = ?',
+      [commande.quantite, commande.evenement_id]
+    );
+
+    await client.query('COMMIT');
+    res.json({ message: 'Paiement valide, tickets generes.', tickets: ticketsGeneres });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  } finally {
+    client.release();
+  }
+};
+
+const obtenirStatutOngletVote = async (req, res) => {
+  try {
+    res.json({ visible: await isVoteTabVisible(db) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+const mettreAJourStatutOngletVote = async (req, res) => {
+  const visible = req.body?.visible;
+
+  if (typeof visible !== 'boolean') {
+    return res.status(400).json({ message: 'Le champ visible doit etre un booleen.' });
+  }
+
+  try {
+    await setVoteTabVisible(db, visible);
+    res.json({
+      visible,
+      message: visible
+        ? 'Onglet Vote active avec succes.'
+        : 'Onglet Vote desactive avec succes.'
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+module.exports = {
+  creerInspecteur,
+  listeInspecteurs,
+  supprimerInspecteur,
+  statistiques,
+  reinitialiserCompteurs,
+  tousLesTickets,
+  toutesLesCommandes,
+  validerCommandePayee,
+  mettreAJourEvenement,
+  obtenirEvenement,
+  creerSousAdmin,
+  listeSousAdmins,
+  supprimerSousAdmin,
+  listeClients,
+  reinitialiserMotDePasseClient,
+  obtenirStatutAuthClients,
+  mettreAJourStatutAuthClients,
+  obtenirStatutPaiements,
+  mettreAJourStatutPaiements,
+  obtenirStatutOngletVote,
+  mettreAJourStatutOngletVote
+};

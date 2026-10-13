@@ -5,6 +5,7 @@ const FacebookStrategy = require('passport-facebook').Strategy;
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const db = require('../config/db');
+const { isClientAuthDisabled } = require('../utils/clientAuthSettings');
 const router = express.Router();
 const { register, login } = require('../controllers/authController');
 
@@ -19,6 +20,7 @@ const authLimiter = rateLimit({
 
 
 const JWT_SECRET = process.env.JWT_SECRET || 'bal_masque_secret_2026';
+const CLIENT_AUTH_DISABLED_MESSAGE = 'Les inscriptions et connexions client sont temporairement suspendues. Les administrateurs peuvent continuer a se connecter.';
 const isProduction = process.env.NODE_ENV === 'production';
 const FRONTEND_URL = (process.env.FRONTEND_URL || (isProduction ? 'https://bal-masque.vercel.app' : 'http://localhost:3000')).replace(/\/$/, '');
 const OAUTH_BASE_URL = (process.env.OAUTH_BASE_URL || process.env.BACKEND_URL || FRONTEND_URL).replace(/\/$/, '');
@@ -67,6 +69,10 @@ const findOrCreateOAuthUser = async (profile) => {
 
 const completeOAuthLogin = async (req, res) => {
   try {
+    if (await isClientAuthDisabled(db)) {
+      return redirectWithError(res, CLIENT_AUTH_DISABLED_MESSAGE);
+    }
+
     const user = await findOrCreateOAuthUser(req.user);
     const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
     const encodedUser = encodeURIComponent(JSON.stringify(user));
@@ -105,6 +111,15 @@ if (facebookConfigured) {
 
 router.post('/register', authLimiter, register);
 router.post('/login', authLimiter, login);
+
+router.get('/client-auth-status', async (req, res) => {
+  try {
+    res.json({ disabled: await isClientAuthDisabled(db) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+});
 
 router.get('/google',
   requireOAuthConfig('Google', googleConfigured),

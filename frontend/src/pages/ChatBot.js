@@ -1,18 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { EVENT_FULL_LABEL, EVENT_LOCATION } from '../utils/eventInfo';
 
 // ─── Base de connaissance FAQ ───────────────────────────────────────────────
 const FAQ_RULES = [
   {
     keywords: ['date', 'quand', 'jour', 'soirée', 'soir', 'heure', 'horaire'],
-    answer: "📅 L'événement aura lieu le Jeudi 13 Août 2026. Reste connecté sur ce site ou contacte-nous directement pour les détails de l'heure !",
+    answer: `📅 L'événement aura lieu le ${EVENT_FULL_LABEL}.`,
   },
   {
     keywords: ['lieu', 'où', 'endroit', 'salle', 'adresse', 'palais', 'location'],
-    answer: "📍 Le lieu exact sera annoncé prochainement. L'événement se déroulera dans un cadre élégant digne du Grand Bal Masqué de Pigier CI. Suis nos réseaux pour l'annonce !",
+    answer: `📍 Le bal aura lieu à ${EVENT_LOCATION}.`,
   },
   {
     keywords: ['tarif', 'prix', 'coût', 'combien', 'ticket', 'billet', 'place', 'solo', 'couple', 'fcfa'],
-    answer: "🎟️ Les tarifs sont progressifs : plus tu t'inscris tôt, moins tu paies !\n\n• **Solo** : à partir de 7 000 FCFA\n• **Couple** : à partir de 10 000 FCFA\n\nLes places sont limitées — ne tarde pas !",
+    answer: "🎟️ Les tarifs sont :\n\n• **Solo** : 8 000 FCFA\n• **Couple** : 12 000 FCFA\n\nLes places sont limitées — ne tarde pas !",
   },
   {
     keywords: ['acheter', 'achat', 'commander', 'réserver', 'réservation', 'comment', 'inscrire'],
@@ -62,7 +63,6 @@ const QUICK_QUESTIONS = [
   { label: '📅 Date', query: 'Quelle est la date ?' },
   { label: '🎭 Dress code', query: 'Quel est le dress code ?' },
   { label: '📍 Lieu', query: 'Où se passe l\'événement ?' },
-
 ];
 
 const FALLBACK = "Je n'ai pas cette information pour le moment. Contacte-nous directement via WhatsApp (+225 01 51 17 15 46) ou par email à jojoyokro1@gmail.com 😊";
@@ -80,13 +80,11 @@ function getBotResponse(input) {
 }
 
 function formatMessage(text) {
-  // Bold **text**
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
     }
-    // Newlines
     return part.split('\n').map((line, j, arr) => (
       <React.Fragment key={`${i}-${j}`}>
         {line}
@@ -145,13 +143,10 @@ export default function ChatBot() {
     sendMessage(input.trim());
   };
 
-
   return (
     <>
       {/* ── Fenêtre de chat ── */}
       <div className={`chatbot-window ${open ? 'chatbot-window-open' : ''}`} role="dialog" aria-label="Assistant FAQ BalFest 2026">
-
-        {/* Header */}
         <div className="chatbot-header">
           <div className="chatbot-header-avatar" aria-hidden="true">🎭</div>
           <div className="chatbot-header-info">
@@ -169,7 +164,6 @@ export default function ChatBot() {
           </button>
         </div>
 
-        {/* Messages */}
         <div className="chatbot-messages" aria-live="polite">
           {messages.map((msg) => (
             <div key={msg.id} className={`chatbot-msg chatbot-msg-${msg.from}`}>
@@ -194,7 +188,6 @@ export default function ChatBot() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Questions rapides */}
         <div className="chatbot-quick-questions" aria-label="Questions fréquentes">
           {QUICK_QUESTIONS.map((q) => (
             <button
@@ -207,7 +200,6 @@ export default function ChatBot() {
           ))}
         </div>
 
-        {/* Input */}
         <form className="chatbot-input-form" onSubmit={handleSubmit}>
           <input
             ref={inputRef}
@@ -232,6 +224,15 @@ export default function ChatBot() {
           </button>
         </form>
       </div>
+
+      <button
+        className={`chatbot-fab ${open ? 'chatbot-fab-open' : ''}`}
+        onClick={() => setOpen((value) => !value)}
+        aria-label={open ? 'Fermer l’assistant FAQ' : 'Ouvrir l’assistant FAQ'}
+      >
+        <span aria-hidden="true">{open ? '✕' : '💬'}</span>
+        {!open && <span className="chatbot-fab-label">FAQ</span>}
+      </button>
     </>
   );
 }

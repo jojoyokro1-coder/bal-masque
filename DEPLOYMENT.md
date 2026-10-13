@@ -10,7 +10,7 @@
 Le compte admin cree par defaut est :
 
 - Email : `admin@balmasque.ci`
-- Mot de passe : `Admin@123`
+- Mot de passe : `Admin@@123`
 
 ## 2. Recuperer l'URL Postgres
 
@@ -101,7 +101,7 @@ Apres deploiement :
 
 - Tester `https://ton-domaine.vercel.app/api/health`.
 - Ouvrir `https://ton-domaine.vercel.app/login`.
-- Se connecter avec `admin@balmasque.ci / Admin@123`.
+- Se connecter avec `admin@balmasque.ci / Admin@@123`.
 - Tester `Continuer avec Google`.
 - Tester `Continuer avec Facebook`.
 
